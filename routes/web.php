@@ -10,3 +10,4 @@ Route::get('/penerima/{penerima}/edit', [PenerimaController::class, 'edit'])->na
 Route::put('/penerima/{penerima}', [PenerimaController::class, 'update'])->name('penerima.update');
 Route::get('/penerima/{penerima}/barcode', [PenerimaController::class, 'exportBarcode'])->name('penerima.barcode');
 Route::get('/qrcode/{text}', [QRCodeController::class, 'generate']);
+Route::get('/penerima/export/all', [PenerimaController::class, 'exportAllBarcode'])->name('penerima.exportAllBarcode');

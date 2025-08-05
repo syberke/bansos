@@ -8,6 +8,7 @@
     @if (session('success'))
         <p style="color: green">{{ session('success') }}</p>
     @endif
+    <a href="{{ route('penerima.exportAllBarcode') }}" style="margin-top: 10px; display: inline-block;">⬇️ Export Semua QR (ZIP)</a>
 
     <a href="{{ route('penerima.create') }}">+ Tambah Penerima</a>
 

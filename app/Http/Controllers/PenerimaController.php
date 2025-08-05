@@ -9,6 +9,8 @@ use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Symfony\Component\HttpFoundation\Response;
+use ZipArchive;
+use Illuminate\Support\Facades\File;
 
 class PenerimaController extends Controller
 {
@@ -81,5 +83,43 @@ class PenerimaController extends Controller
         return response($result->getString())
             ->header('Content-Type', $result->getMimeType())
             ->header('Content-Disposition', 'attachment; filename="barcode_' . $penerima->kode_unik . '.png"');
+    }
+
+    public function exportAllBarcode()
+    {
+        $penerimas = Penerima::all();
+
+        if ($penerimas->isEmpty()) {
+            return back()->with('success', 'Tidak ada data untuk diexport.');
+        }
+
+        $tempDir = storage_path('app/qrcodes');
+        File::ensureDirectoryExists($tempDir);
+
+        // Kosongkan folder QR sebelumnya
+        File::cleanDirectory($tempDir);
+
+        $writer = new PngWriter();
+
+        foreach ($penerimas as $p) {
+            $qrCode = new QrCode($p->kode_unik);
+            $result = $writer->write($qrCode);
+            $filename = $tempDir . '/' . $p->kode_unik . '.png';
+            file_put_contents($filename, $result->getString());
+        }
+
+        // Buat file ZIP
+        $zipPath = storage_path('app/qrcodes.zip');
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            foreach (File::files($tempDir) as $file) {
+                $zip->addFile($file->getPathname(), $file->getFilename());
+            }
+            $zip->close();
+        } else {
+            return back()->with('error', 'Gagal membuat file ZIP.');
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 }
