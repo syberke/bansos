@@ -1,9 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Daftar Penerima Bansos</title>
-</head>
-<body>
+@extends('layouts.app')
+
+@section('title', 'Daftar Penerima Bansos')
+
+@section('content')
     <h1>Daftar Penerima Bansos</h1>
 
     @if (session('success'))
@@ -12,7 +11,7 @@
 
     <a href="{{ route('penerima.create') }}">+ Tambah Penerima</a>
 
-    <table border="1" cellpadding="5" cellspacing="0">
+    <table border="1" cellpadding="5" cellspacing="0" style="margin-top: 20px; background: white;">
         <thead>
             <tr>
                 <th>Nama Lengkap</th>
@@ -22,7 +21,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($penerimas as $p)
+            @forelse ($penerimas as $p)
                 <tr>
                     <td>{{ $p->nama_lengkap }}</td>
                     <td>{{ $p->kode_unik }}</td>
@@ -32,8 +31,11 @@
                         <a href="{{ route('penerima.barcode', $p->id) }}">Download Barcode</a>
                     </td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="4">Belum ada data penerima.</td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
-</body>
-</html>
+@endsection
