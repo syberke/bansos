@@ -24,12 +24,15 @@
         <tbody>
             @forelse ($penerimas as $p)
                 <tr>
-                    <td>{{ $p->nama_lengkap }}</td>
-                    <td>{{ $p->kode_unik }}</td>
-                    <td>{{ $p->status ? '✅' : '❌' }}</td>
+                    <td>{{ $p['nama_lengkap'] }}</td>
+<td>{{ $p['kode_unik'] }}</td>
+<td>{{ $p['status'] ? '✅' : '❌' }}</td>
                     <td>
-                        <a href="{{ route('penerima.edit', $p->id) }}">Edit</a> |
-                        <a href="{{ route('penerima.barcode', $p->id) }}">Download Barcode</a>
+                         |
+                        <a href="{{ route('penerima.barcode', $p['id']) }}">Export Barcode</a>
+
+
+
                     </td>
                 </tr>
             @empty

@@ -8,15 +8,28 @@ use Illuminate\Support\Str;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use ZipArchive;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Collection;
+
 
 class PenerimaController extends Controller
 {
+
+    protected $spreadsheetApiUrl = 'https://script.google.com/macros/s/AKfycbznOvrrQNDBlxQ1wlhMekYI-3TUomUaRmZSUJG3-k1GF7EcoZCCzqV40C6CpbqdqdFq/exec'; // Ganti dengan URL Web App milikmu
+
     public function index()
-    {
-        $penerimas = Penerima::all();
+{
+    $response = Http::get($this->spreadsheetApiUrl);
+
+    if ($response->successful()) {
+        $penerimas = collect($response->json()); // ✅ ubah ke collection (object-like)
         return view('penerima.index', compact('penerimas'));
     }
+
+    return view('penerima.index')->with('penerimas', collect());
+}
+
 
     public function create()
     {
@@ -24,24 +37,32 @@ class PenerimaController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nama_lengkap' => 'required',
-            'nama_ayah' => 'required',
-            'nama_ibu' => 'required',
-            'tempat_lahir' => 'required',
-            'tanggal_lahir' => 'required|date',
-            'nama_sekolah' => 'required',
-            'tingkat' => 'required|in:SD,SMP',
-            'kelas' => 'required',
-            'alamat' => 'required',
-        ]);
+{
+    $validated = $request->validate([
+        'nama_lengkap' => 'required',
+        'nama_ayah' => 'required',
+        'nama_ibu' => 'required',
+        'tempat_lahir' => 'required',
+        'tanggal_lahir' => 'required|date',
+        'nama_sekolah' => 'required',
+        'tingkat' => 'required|in:SD,SMP',
+        'kelas' => 'required',
+        'alamat' => 'required',
+    ]);
 
-        $validated['kode_unik'] = strtoupper(Str::random(10));
-        Penerima::create($validated);
+    $validated['kode_unik'] = strtoupper(Str::random(10));
+    $penerima = Penerima::create($validated);
 
-        return redirect()->route('penerima.index')->with('success', 'Data berhasil ditambahkan!');
-    }
+    // Kirim ke Spreadsheet
+    Http::asForm()->post($this->spreadsheetApiUrl, [
+        'nama' => $validated['nama_lengkap'],
+        'asal' => $validated['nama_sekolah'],
+        'kelas' => $validated['kelas']
+    ]);
+
+    return redirect()->route('penerima.index')->with('success', 'Data berhasil ditambahkan!');
+}
+
 
     public function edit(Penerima $penerima)
     {
