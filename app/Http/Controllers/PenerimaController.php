@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Penerima;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
-use Symfony\Component\HttpFoundation\Response;
 use ZipArchive;
 use Illuminate\Support\Facades\File;
 
@@ -40,7 +38,6 @@ class PenerimaController extends Controller
         ]);
 
         $validated['kode_unik'] = strtoupper(Str::random(10));
-
         Penerima::create($validated);
 
         return redirect()->route('penerima.index')->with('success', 'Data berhasil ditambahkan!');
@@ -67,22 +64,41 @@ class PenerimaController extends Controller
         ]);
 
         $penerima->update($validated);
-
         return redirect()->route('penerima.index')->with('success', 'Data berhasil diupdate!');
     }
 
-
-
     public function exportBarcode(Penerima $penerima)
     {
-        $qrCode = new QrCode($penerima->kode_unik); // isi QR code
-
         $writer = new PngWriter();
-        $result = $writer->write($qrCode);
+        $qrCode = new QrCode($penerima->kode_unik);
+        $qrResult = $writer->write($qrCode);
 
-        return response($result->getString())
-            ->header('Content-Type', $result->getMimeType())
-            ->header('Content-Disposition', 'attachment; filename="barcode_' . $penerima->kode_unik . '.png"');
+        $qrImage = imagecreatefromstring($qrResult->getString());
+
+        $width = 400;
+        $height = 300;
+        $canvas = imagecreatetruecolor($width, $height);
+
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        $black = imagecolorallocate($canvas, 0, 0, 0);
+        imagefilledrectangle($canvas, 0, 0, $width, $height, $white);
+
+        // Tempel QR
+        $qrSize = 150;
+        imagecopyresampled($canvas, $qrImage, 20, 70, 0, 0, $qrSize, $qrSize, imagesx($qrImage), imagesy($qrImage));
+
+        // Tambahkan teks
+        imagestring($canvas, 5, 20, 20, 'QR Penerima Bansos', $black);
+        imagestring($canvas, 4, 20, 50, 'Nama: ' . $penerima->nama_lengkap, $black);
+        imagestring($canvas, 4, 20, 230, 'Kode: ' . $penerima->kode_unik, $black);
+
+        // Simpan sementara
+        $filename = storage_path('app/public/barcode_' . $penerima->kode_unik . '.png');
+        imagepng($canvas, $filename);
+        imagedestroy($qrImage);
+        imagedestroy($canvas);
+
+        return response()->download($filename)->deleteFileAfterSend(true);
     }
 
     public function exportAllBarcode()
@@ -93,25 +109,41 @@ class PenerimaController extends Controller
             return back()->with('success', 'Tidak ada data untuk diexport.');
         }
 
-        $tempDir = storage_path('app/qrcodes');
+        $tempDir = storage_path('app/qrcards');
         File::ensureDirectoryExists($tempDir);
-
-        // Kosongkan folder QR sebelumnya
         File::cleanDirectory($tempDir);
 
         $writer = new PngWriter();
 
         foreach ($penerimas as $p) {
             $qrCode = new QrCode($p->kode_unik);
-            $result = $writer->write($qrCode);
-            $filename = $tempDir . '/' . $p->kode_unik . '.png';
-            file_put_contents($filename, $result->getString());
+            $qrResult = $writer->write($qrCode);
+
+            $qrImage = imagecreatefromstring($qrResult->getString());
+
+            $width = 400;
+            $height = 300;
+            $canvas = imagecreatetruecolor($width, $height);
+
+            $white = imagecolorallocate($canvas, 255, 255, 255);
+            $black = imagecolorallocate($canvas, 0, 0, 0);
+            imagefilledrectangle($canvas, 0, 0, $width, $height, $white);
+
+            imagecopyresampled($canvas, $qrImage, 20, 70, 0, 0, 150, 150, imagesx($qrImage), imagesy($qrImage));
+            imagestring($canvas, 5, 20, 20, 'QR Penerima Bansos', $black);
+            imagestring($canvas, 4, 20, 50, 'Nama: ' . $p->nama_lengkap, $black);
+            imagestring($canvas, 4, 20, 230, 'Kode: ' . $p->kode_unik, $black);
+
+            $filename = $tempDir . '/' . $p->kode_unik . '_card.png';
+            imagepng($canvas, $filename);
+            imagedestroy($qrImage);
+            imagedestroy($canvas);
         }
 
-        // Buat file ZIP
-        $zipPath = storage_path('app/qrcodes.zip');
+        // ZIP
+        $zipPath = storage_path('app/qrcards.zip');
         $zip = new ZipArchive;
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE)) {
             foreach (File::files($tempDir) as $file) {
                 $zip->addFile($file->getPathname(), $file->getFilename());
             }
