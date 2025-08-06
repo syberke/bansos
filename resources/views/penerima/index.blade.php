@@ -11,6 +11,7 @@
 
     <a href="{{ route('penerima.exportAllBarcode') }}" style="margin-top: 10px; display: inline-block;">⬇️ Export Semua QR (ZIP)</a>
 
+
     {{-- Jika form create masih dari DB lokal, tampilkan ini. Kalau tidak, bisa disembunyikan --}}
     {{-- <a href="{{ route('penerima.create') }}">+ Tambah Penerima</a> --}}
 
@@ -18,6 +19,11 @@
         <thead>
             <tr>
                 <th>Nama Lengkap</th>
+                <th>Tempat lahir</th>
+                <th>Nama Sekolah</th>
+                <th>Tingkat</th>
+                <th>Kelas</th>
+                <th>Alamat</th>
                 <th>Kode Unik</th>
                 <th>Status</th>
                 <th>Aksi</th>
@@ -27,6 +33,11 @@
             @forelse ($penerimas as $p)
                 <tr>
                     <td>{{ $p['nama_lengkap'] ?? '-' }}</td>
+                    <td>{{ $p['tempat_lahir'] ?? '-' }}</td>
+                    <td>{{ $p['nama_sekolah'] ?? '-' }}</td>
+                    <td>{{ $p['tingkat'] ?? '-' }}</td>
+                    <td>{{ $p['kelas'] ?? '-' }}</td>
+                    <td>{{ $p['alamat'] ?? '-' }}</td>
                     <td>{{ $p['kode_unik'] ?? '-' }}</td>
                     <td>
                         @if (isset($p['status']) && ($p['status'] == 1 || $p['status'] == '1' || $p['status'] === true))

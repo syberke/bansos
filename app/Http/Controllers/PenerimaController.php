@@ -122,59 +122,95 @@ class PenerimaController extends Controller
 
         return response()->download($filename)->deleteFileAfterSend(true);
     }
-    
+
 
     public function exportAllBarcode()
     {
-        $penerimas = Penerima::all();
+        // 1. Setup dasar
+        ini_set('memory_limit', '1024M');
+        set_time_limit(0);
 
-        if ($penerimas->isEmpty()) {
-            return back()->with('success', 'Tidak ada data untuk diexport.');
-        }
-
-        $tempDir = storage_path('app/qrcards');
+        // 2. Gunakan folder temporary yang berbeda
+        $tempDir = storage_path('app/temp_qrcards_' . time());
         File::ensureDirectoryExists($tempDir);
-        File::cleanDirectory($tempDir);
 
-        $writer = new PngWriter();
+        try {
+            // 3. Ambil data
+            $response = Http::get($this->spreadsheetApi);
+            if (!$response->successful()) {
+                throw new \Exception("Gagal mengambil data");
+            }
 
-        foreach ($penerimas as $p) {
-            $qrCode = new QrCode($p->kode_unik);
-            $qrResult = $writer->write($qrCode);
+            $penerimas = $response->json();
+            if (empty($penerimas)) {
+                return back()->with('info', 'Tidak ada data untuk diexport');
+            }
 
-            $qrImage = imagecreatefromstring($qrResult->getString());
+            // 4. Generate QR satu per satu
+            $writer = new PngWriter();
+            foreach ($penerimas as $p) {
+                if (empty($p['kode_unik'])) continue;
 
-            $width = 400;
-            $height = 300;
-            $canvas = imagecreatetruecolor($width, $height);
+                try {
+                    // 5. Gunakan teknik yang sama dengan export single
+                    $qrCode = new QrCode($p['kode_unik']);
+                    $qrResult = $writer->write($qrCode);
+                    $qrImage = imagecreatefromstring($qrResult->getString());
 
-            $white = imagecolorallocate($canvas, 255, 255, 255);
-            $black = imagecolorallocate($canvas, 0, 0, 0);
-            imagefilledrectangle($canvas, 0, 0, $width, $height, $white);
+                    $width = 400;
+                    $height = 300;
+                    $canvas = imagecreatetruecolor($width, $height);
 
-            imagecopyresampled($canvas, $qrImage, 20, 70, 0, 0, 150, 150, imagesx($qrImage), imagesy($qrImage));
-            imagestring($canvas, 5, 20, 20, 'QR Penerima Bansos', $black);
-            imagestring($canvas, 4, 20, 50, 'Nama: ' . $p->nama_lengkap, $black);
-            imagestring($canvas, 4, 20, 230, 'Kode: ' . $p->kode_unik, $black);
+                    $white = imagecolorallocate($canvas, 255, 255, 255);
+                    $black = imagecolorallocate($canvas, 0, 0, 0);
+                    imagefilledrectangle($canvas, 0, 0, $width, $height, $white);
 
-            $filename = $tempDir . '/' . $p->kode_unik . '_card.png';
-            imagepng($canvas, $filename);
-            imagedestroy($qrImage);
-            imagedestroy($canvas);
-        }
+                    imagecopyresampled($canvas, $qrImage, 20, 70, 0, 0, 150, 150, imagesx($qrImage), imagesy($qrImage));
+                    imagestring($canvas, 5, 20, 20, 'QR Penerima Bansos', $black);
+                    imagestring($canvas, 4, 20, 50, 'Nama: ' . ($p['nama_lengkap'] ?? '-'), $black);
+                    imagestring($canvas, 4, 20, 230, 'Kode: ' . $p['kode_unik'], $black);
 
-        // ZIP
-        $zipPath = storage_path('app/qrcards.zip');
-        $zip = new ZipArchive;
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE)) {
-            foreach (File::files($tempDir) as $file) {
+                    $filename = $tempDir . '/' . $p['kode_unik'] . '.png';
+                    imagepng($canvas, $filename);
+
+                    // 6. Bersihkan memory
+                    imagedestroy($qrImage);
+                    imagedestroy($canvas);
+                } catch (\Exception $e) {
+                    continue; // Lewati error per item
+                }
+            }
+
+            // 7. Buat ZIP dengan approach berbeda
+            $zipPath = storage_path('app/qrcards_' . time() . '.zip');
+            $zip = new \ZipArchive();
+
+            if ($zip->open($zipPath, \ZipArchive::CREATE) !== TRUE) {
+                throw new \Exception("Tidak bisa buka file ZIP");
+            }
+
+            $files = File::files($tempDir);
+            foreach ($files as $file) {
                 $zip->addFile($file->getPathname(), $file->getFilename());
             }
-            $zip->close();
-        } else {
-            return back()->with('error', 'Gagal membuat file ZIP.');
-        }
 
-        return response()->download($zipPath)->deleteFileAfterSend(true);
+            if ($zip->close() !== TRUE) {
+                throw new \Exception("Gagal menutup ZIP");
+            }
+
+            // 8. Hapus folder temporary
+            File::deleteDirectory($tempDir);
+
+            // 9. Return response
+            return response()->download($zipPath)
+                ->deleteFileAfterSend(true)
+                ->setStatusCode(200);
+        } catch (\Exception $e) {
+            // Bersihkan folder temporary jika error
+            if (isset($tempDir) && File::exists($tempDir)) {
+                File::deleteDirectory($tempDir);
+            }
+            return back()->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 }
