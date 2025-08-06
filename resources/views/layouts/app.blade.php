@@ -33,7 +33,7 @@
     <div class="sidebar">
         <h2>Menu</h2>
         <a href="{{ url('/') }}">Dashboard</a>
-        <a href="{{ url('/qr-codes') }}">QR Codes</a>
+        <a href="{{ url('/verifikasi') }}">QR Codes</a>
         <a href="{{ url('/settings') }}">Pengaturan</a>
     </div>
 

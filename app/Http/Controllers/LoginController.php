@@ -35,7 +35,7 @@ class LoginController extends Controller
                 // Login berhasil → Simpan ke session (jika perlu)
                 session(['username' => $result['username']]);
 
-                return redirect()->route('')->with('success', 'Login berhasil sebagai ' . $result['username']);
+                return redirect()->route('penerima.index')->with('success', 'Login berhasil sebagai ' . $result['username']);
             } else {
                 return back()->withErrors(['login' => $result['message']]);
             }

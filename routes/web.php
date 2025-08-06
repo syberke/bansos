@@ -15,3 +15,8 @@ Route::get('/penerima/export/all', [PenerimaController::class, 'exportAllBarcode
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+Route::get('/verifikasi', [PenerimaController::class, 'verifyForm'])->name('verifikasi.form');
+Route::post('/verifikasi', [PenerimaController::class, 'verifyKode'])->name('verifikasi.kode');
+Route::post('/penerima/{id}/export-pdf', [PenerimaController::class, 'exportPDF'])->name('penerima.export.pdf');
+Route::get('/export-pdf/{kode}', [PenerimaController::class, 'exportPDF'])->name('export.pdf');

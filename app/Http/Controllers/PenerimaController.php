@@ -10,6 +10,8 @@ use Endroid\QrCode\Writer\PngWriter;
 use ZipArchive;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\View;
+use Barryvdh\DomPDF\Facade\Pdf;
 class PenerimaController extends Controller
 {
 
@@ -212,5 +214,55 @@ class PenerimaController extends Controller
             }
             return back()->with('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    public function verifyForm()
+    {
+        return view('penerima.verify');
+    }
+
+    public function verifyKode(Request $request)
+    {
+        $request->validate([
+            'kode_unik' => 'required|string|max:20',
+        ]);
+
+        $response = Http::get($this->spreadsheetApi);
+
+        if (!$response->successful()) {
+            return back()->with('error', 'Gagal mengambil data dari Spreadsheet');
+        }
+
+        $dataList = $response->json();
+        $result = collect($dataList)->firstWhere('kode_unik', strtoupper($request->kode_unik));
+
+        if (!$result) {
+            return back()->with('error', 'Kode tidak ditemukan atau tidak valid.');
+        }
+
+        return view('penerima.result', ['penerima' => $result]);
+    }
+
+    public function exportPDF($kode)
+    {
+        $response = Http::get($this->spreadsheetApi);
+
+        if (!$response->successful()) {
+            return back()->with('error', 'Gagal mengambil data dari Spreadsheet');
+        }
+
+        $dataList = $response->json();
+
+        // Ambil hanya satu orang sesuai kode unik
+        $penerima = collect($dataList)->firstWhere('kode_unik', $kode);
+
+        if (!$penerima) {
+            return back()->with('error', 'Data tidak ditemukan untuk kode: ' . $kode);
+        }
+
+        // Kirim ke view
+        $pdf = Pdf::loadView('pdf.penerima_export', compact('penerima'));
+
+        return $pdf->download('data_penerima_' . $penerima['nama_lengkap'] . '.pdf');
     }
 }
