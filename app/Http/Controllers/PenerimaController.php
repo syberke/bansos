@@ -9,13 +9,25 @@ use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use ZipArchive;
 use Illuminate\Support\Facades\File;
-
+use Illuminate\Support\Facades\Http;
 class PenerimaController extends Controller
 {
+
+    private $spreadsheetApi = 'https://script.google.com/macros/s/AKfycbznOvrrQNDBlxQ1wlhMekYI-3TUomUaRmZSUJG3-k1GF7EcoZCCzqV40C6CpbqdqdFq/exec';
     public function index()
     {
-        $penerimas = Penerima::all();
-        return view('penerima.index', compact('penerimas'));
+        $response = Http::get($this->spreadsheetApi);
+
+        if ($response->successful()) {
+            $penerimas = $response->json();
+
+            // Jika datanya ada di key tertentu (misal "data"), sesuaikan:
+            // $penerimas = $response->json()['data'];
+
+            return view('penerima.index', compact('penerimas'));
+        }
+
+        return back()->with('error', 'Gagal mengambil data dari Spreadsheet');
     }
 
     public function create()
@@ -67,10 +79,25 @@ class PenerimaController extends Controller
         return redirect()->route('penerima.index')->with('success', 'Data berhasil diupdate!');
     }
 
-    public function exportBarcode(Penerima $penerima)
+    public function exportBarcode($kode)
     {
+        $response = Http::get($this->spreadsheetApi);
+
+        if (!$response->successful()) {
+            return back()->with('error', 'Gagal mengambil data dari Spreadsheet');
+        }
+
+        $dataList = $response->json();
+
+        // Cari data penerima berdasarkan kode_unik
+        $penerima = collect($dataList)->firstWhere('kode_unik', $kode);
+
+        if (!$penerima || !isset($penerima['kode_unik']) || !is_string($penerima['kode_unik'])) {
+            return back()->with('error', 'Data tidak ditemukan atau kode tidak valid.');
+        }
+
         $writer = new PngWriter();
-        $qrCode = new QrCode($penerima->kode_unik);
+        $qrCode = new QrCode($penerima['kode_unik']);
         $qrResult = $writer->write($qrCode);
 
         $qrImage = imagecreatefromstring($qrResult->getString());
@@ -83,23 +110,19 @@ class PenerimaController extends Controller
         $black = imagecolorallocate($canvas, 0, 0, 0);
         imagefilledrectangle($canvas, 0, 0, $width, $height, $white);
 
-        // Tempel QR
-        $qrSize = 150;
-        imagecopyresampled($canvas, $qrImage, 20, 70, 0, 0, $qrSize, $qrSize, imagesx($qrImage), imagesy($qrImage));
-
-        // Tambahkan teks
+        imagecopyresampled($canvas, $qrImage, 20, 70, 0, 0, 150, 150, imagesx($qrImage), imagesy($qrImage));
         imagestring($canvas, 5, 20, 20, 'QR Penerima Bansos', $black);
-        imagestring($canvas, 4, 20, 50, 'Nama: ' . $penerima->nama_lengkap, $black);
-        imagestring($canvas, 4, 20, 230, 'Kode: ' . $penerima->kode_unik, $black);
+        imagestring($canvas, 4, 20, 50, 'Nama: ' . ($penerima['nama_lengkap'] ?? '-'), $black);
+        imagestring($canvas, 4, 20, 230, 'Kode: ' . $penerima['kode_unik'], $black);
 
-        // Simpan sementara
-        $filename = storage_path('app/public/barcode_' . $penerima->kode_unik . '.png');
+        $filename = storage_path('app/public/barcode_' . $penerima['kode_unik'] . '.png');
         imagepng($canvas, $filename);
         imagedestroy($qrImage);
         imagedestroy($canvas);
 
         return response()->download($filename)->deleteFileAfterSend(true);
     }
+    
 
     public function exportAllBarcode()
     {

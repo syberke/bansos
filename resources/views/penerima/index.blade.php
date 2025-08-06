@@ -8,9 +8,11 @@
     @if (session('success'))
         <p style="color: green">{{ session('success') }}</p>
     @endif
+
     <a href="{{ route('penerima.exportAllBarcode') }}" style="margin-top: 10px; display: inline-block;">⬇️ Export Semua QR (ZIP)</a>
 
-    <a href="{{ route('penerima.create') }}">+ Tambah Penerima</a>
+    {{-- Jika form create masih dari DB lokal, tampilkan ini. Kalau tidak, bisa disembunyikan --}}
+    {{-- <a href="{{ route('penerima.create') }}">+ Tambah Penerima</a> --}}
 
     <table border="1" cellpadding="5" cellspacing="0" style="margin-top: 20px; background: white;">
         <thead>
@@ -24,12 +26,25 @@
         <tbody>
             @forelse ($penerimas as $p)
                 <tr>
-                    <td>{{ $p->nama_lengkap }}</td>
-                    <td>{{ $p->kode_unik }}</td>
-                    <td>{{ $p->status ? '✅' : '❌' }}</td>
+                    <td>{{ $p['nama_lengkap'] ?? '-' }}</td>
+                    <td>{{ $p['kode_unik'] ?? '-' }}</td>
                     <td>
-                        <a href="{{ route('penerima.edit', $p->id) }}">Edit</a> |
-                        <a href="{{ route('penerima.barcode', $p->id) }}">Download Barcode</a>
+                        @if (isset($p['status']) && ($p['status'] == 1 || $p['status'] == '1' || $p['status'] === true))
+                            ✅
+                        @else
+                            ❌
+                        @endif
+                    </td>
+                    <td>
+                        {{-- Edit akan error jika tidak ada route dan ID dari DB --}}
+                        {{-- <a href="{{ route('penerima.edit', $p['id']) }}">Edit</a> | --}}
+
+                        @if (isset($p['kode_unik']))
+                            <a href="{{ route('penerima.export', ['kode' => $p['kode_unik']]) }}">Download Barcode</a>
+
+                        @else
+                            -
+                        @endif
                     </td>
                 </tr>
             @empty

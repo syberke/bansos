@@ -8,6 +8,8 @@ Route::get('/penerima/create', [PenerimaController::class, 'create'])->name('pen
 Route::post('/penerima', [PenerimaController::class, 'store'])->name('penerima.store');
 Route::get('/penerima/{penerima}/edit', [PenerimaController::class, 'edit'])->name('penerima.edit');
 Route::put('/penerima/{penerima}', [PenerimaController::class, 'update'])->name('penerima.update');
-Route::get('/penerima/{penerima}/barcode', [PenerimaController::class, 'exportBarcode'])->name('penerima.barcode');
+Route::get('/penerima/export/{kode}', [PenerimaController::class, 'exportBarcode'])->name('penerima.export');
+
+
 Route::get('/qrcode/{text}', [QRCodeController::class, 'generate']);
 Route::get('/penerima/export/all', [PenerimaController::class, 'exportAllBarcode'])->name('penerima.exportAllBarcode');
