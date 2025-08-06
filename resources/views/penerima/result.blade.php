@@ -14,9 +14,10 @@
         <label><input type="checkbox" class="item-check"> Alat Tulis</label><br>
     </form>
 
-    <button id="exportBtn" disabled>
-        Export PDF
-    </button>
+    <a href="{{ url('/export-pdf/' . $penerima['kode_unik']) }}" id="exportBtn" target="_blank">
+    Export PDF
+</a>
+
 </div>
 
 <script>
@@ -54,5 +55,6 @@
             newWindow.onload = () => newWindow.print();
         });
     });
+
 </script>
 @endsection

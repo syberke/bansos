@@ -18,5 +18,4 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::get('/verifikasi', [PenerimaController::class, 'verifyForm'])->name('verifikasi.form');
 Route::post('/verifikasi', [PenerimaController::class, 'verifyKode'])->name('verifikasi.kode');
-Route::post('/penerima/{id}/export-pdf', [PenerimaController::class, 'exportPDF'])->name('penerima.export.pdf');
 Route::get('/export-pdf/{kode}', [PenerimaController::class, 'exportPDF'])->name('export.pdf');

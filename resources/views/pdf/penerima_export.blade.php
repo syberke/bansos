@@ -27,13 +27,11 @@
         <li>Tas</li>
         <li>Sepatu</li>
         <li>Seragam</li>
-        <li>Alat Tulis</li> 
+        <li>Alat Tulis</li>
     </ul>
 </body>
 <script>
-    window.onload = function() {
-        window.print();
-    };
+
 </script>
 
 </html>
